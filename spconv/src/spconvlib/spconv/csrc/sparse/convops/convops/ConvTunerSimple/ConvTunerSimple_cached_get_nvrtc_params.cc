@@ -6,7 +6,7 @@ namespace sparse {
 namespace convops {
 namespace convops {
 using static_key_t = std::tuple<int, int, int, int, int, int, int, int, int, int>;
-using algo_cache_key_t = std::tuple<int, int, int, int, int, int, int, int>;
+using algo_cache_key_t = std::tuple<int, int, int, int, int, int, int, int, bool>;
 using ExternalAllocator = spconvlib::spconv::csrc::sparse::alloc::ExternalAllocator;
 using ConvTuneResult = spconvlib::spconv::csrc::sparse::convops::ConvTuneResult;
 using TensorView = spconvlib::cumm::common::TensorView;

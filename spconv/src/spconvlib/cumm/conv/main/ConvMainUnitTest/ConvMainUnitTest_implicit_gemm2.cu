@@ -27,6 +27,15 @@ void ConvMainUnitTest::implicit_gemm2(tv::gemm::ConvParams params)   {
     }
   }
   if (algo_desp.algo == "Turing"&& static_cast<int>(algo_desp.shuffle_type) == 0){
+    if (algo_desp.dtype_a == tv::DType(3) && algo_desp.dtype_b == tv::DType(3) && algo_desp.dtype_c == tv::DType(3)){
+      return matmul_split_Turing_s8s8s8_0(params);
+    }
+    if (algo_desp.dtype_a == tv::DType(3) && algo_desp.dtype_b == tv::DType(3) && algo_desp.dtype_c == tv::DType(0)){
+      return matmul_split_Turing_s8s8f32_0(params);
+    }
+    if (algo_desp.dtype_a == tv::DType(3) && algo_desp.dtype_b == tv::DType(3) && algo_desp.dtype_c == tv::DType(7)){
+      return matmul_split_Turing_s8s8f16_0(params);
+    }
     if (algo_desp.dtype_a == tv::DType(7) && algo_desp.dtype_b == tv::DType(7) && algo_desp.dtype_c == tv::DType(7)){
       return matmul_split_Turing_f16f16f16_0(params);
     }
@@ -37,6 +46,15 @@ void ConvMainUnitTest::implicit_gemm2(tv::gemm::ConvParams params)   {
     }
     if (algo_desp.dtype_a == tv::DType(7) && algo_desp.dtype_b == tv::DType(7) && algo_desp.dtype_c == tv::DType(7)){
       return matmul_split_Ampere_f16f16f16_0(params);
+    }
+    if (algo_desp.dtype_a == tv::DType(3) && algo_desp.dtype_b == tv::DType(3) && algo_desp.dtype_c == tv::DType(3)){
+      return matmul_split_Ampere_s8s8s8_0(params);
+    }
+    if (algo_desp.dtype_a == tv::DType(3) && algo_desp.dtype_b == tv::DType(3) && algo_desp.dtype_c == tv::DType(0)){
+      return matmul_split_Ampere_s8s8f32_0(params);
+    }
+    if (algo_desp.dtype_a == tv::DType(3) && algo_desp.dtype_b == tv::DType(3) && algo_desp.dtype_c == tv::DType(7)){
+      return matmul_split_Ampere_s8s8f16_0(params);
     }
   }
   TV_THROW_RT_ERR("can't find any suitable algo for your parameters.", 

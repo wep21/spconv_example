@@ -6,7 +6,7 @@ namespace sparse {
 namespace alloc {
 using TensorView = spconvlib::cumm::common::TensorView;
 using ExternalAllocator = spconvlib::spconv::csrc::sparse::alloc::ExternalAllocator;
-tv::Tensor StaticAllocator::zeros(std::string name, std::vector<int64_t> shape, int dtype, int device, std::uintptr_t stream, bool is_temp_memory)   {
+tv::Tensor StaticAllocator::zeros(std::string name, std::vector<int64_t> shape, int dtype, int device, std::uintptr_t stream, bool is_temp_memory, float scale)   {
   
   auto tvctx = tv::Context();
   tvctx.set_cuda_stream(reinterpret_cast<cudaStream_t>(stream));

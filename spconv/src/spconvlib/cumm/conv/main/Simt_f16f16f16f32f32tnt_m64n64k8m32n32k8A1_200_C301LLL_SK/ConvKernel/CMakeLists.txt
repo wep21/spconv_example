@@ -12,7 +12,7 @@ target_include_directories(spconvlib_cumm_conv_main_Simt_f16f16f16f32f32tnt_m64n
     /home/daisuke/.local/lib/python3.10/site-packages/cumm/include)
 target_compile_options(spconvlib_cumm_conv_main_Simt_f16f16f16f32f32tnt_m64n64k8m32n32k8A1_200_C301LLL_SK_ConvKernel PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:
      -DTV_CUDA
-    -gencode=arch=compute_75,code=[sm_75,compute_75]
+    -gencode=arch=compute_86,code=[sm_86,compute_86]
     -Xcudafe "--diag_suppress=implicit_return_from_non_void_function"
     --expt-relaxed-constexpr
     -Xcompiler="-fPIC"

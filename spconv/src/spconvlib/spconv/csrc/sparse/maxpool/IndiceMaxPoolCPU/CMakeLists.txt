@@ -1,6 +1,6 @@
 
 cmake_minimum_required(VERSION 3.20)
-add_library(spconvlib_spconv_csrc_sparse_maxpool_IndiceMaxPoolCPU OBJECT IndiceMaxPoolCPU_forward.cc IndiceMaxPoolCPU_backward.cc)
+add_library(spconvlib_spconv_csrc_sparse_maxpool_IndiceMaxPoolCPU OBJECT IndiceMaxPoolCPU_global_pool_rearrange.cc IndiceMaxPoolCPU_forward.cc IndiceMaxPoolCPU_backward.cc)
 # set_target_properties(spconvlib_spconv_csrc_sparse_maxpool_IndiceMaxPoolCPU PROPERTIES POSITION_INDEPENDENT_CODE ON)
 set_target_properties( spconvlib_spconv_csrc_sparse_maxpool_IndiceMaxPoolCPU PROPERTIES CXX_STANDARD 14 CUDA_STANDARD 14)
 
@@ -12,7 +12,7 @@ target_include_directories(spconvlib_spconv_csrc_sparse_maxpool_IndiceMaxPoolCPU
     /home/daisuke/.local/lib/python3.10/site-packages/cumm/include)
 target_compile_options(spconvlib_spconv_csrc_sparse_maxpool_IndiceMaxPoolCPU PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:
      -DTV_CUDA
-    -gencode=arch=compute_75,code=[sm_75,compute_75]
+    -gencode=arch=compute_86,code=[sm_86,compute_86]
     -Xcudafe "--diag_suppress=implicit_return_from_non_void_function"
     --expt-relaxed-constexpr
     -Xcompiler="-fPIC"

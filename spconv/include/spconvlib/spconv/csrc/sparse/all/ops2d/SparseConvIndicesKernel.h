@@ -185,10 +185,11 @@ __global__ void calc_conv_indices_stage1_mask_direct_table(TTable table, TConvLo
   }
 }
 template <typename TTable, bool CheckValueValid>
-__global__ void calc_conv_indices_stage2_mask(TTable table, int* indice_pairs_fwd, int* indice_pairs_bwd, const typename TTable::key_type* indice_pairs_uniq_before_sort, uint32_t* mask_fwd, uint32_t* mask_bwd, int num_indices_in, int num_indices_out)   {
+__global__ void calc_conv_indices_stage2_mask(TTable table, int* indice_pairs_fwd, int* indice_pairs_bwd, const typename TTable::key_type* indice_pairs_uniq_before_sort, uint32_t* mask_fwd, uint32_t* mask_bwd, int num_indices_in, int num_indices_out, int mask_int_count)   {
   
   int filter_offset = blockIdx.y;
-  uint32_t filter_mask_fwd = (1u << (filter_offset));
+  int filter_pointer_offset = filter_offset / 32;
+  uint32_t filter_mask_fwd = (1u << (filter_offset % 32));
   // TODO following rule for even kernel size is wrong. 
   // uint32_t filter_mask_bwd = (1u << (gridDim.y - 1 - filter_offset));
   auto indice_pairs_fwd_filter = indice_pairs_fwd + filter_offset * num_indices_out;
@@ -202,7 +203,7 @@ __global__ void calc_conv_indices_stage2_mask(TTable table, int* indice_pairs_fw
               auto output_index = table.value_ptr()[table_offset];
               bool valid = CheckValueValid ? output_index >= 0 : true;
               if (valid){
-                  atomicOr(mask_fwd + output_index, filter_mask_fwd);
+                  atomicOr(mask_fwd + output_index * mask_int_count + filter_pointer_offset, filter_mask_fwd);
                   // atomicOr(mask_bwd + input_index, filter_mask_bwd);
                   indice_pairs_fwd_filter[output_index] = input_index;
                   if (indice_pairs_bwd != nullptr){
@@ -218,13 +219,15 @@ __global__ void calc_conv_indices_stage2_mask(TTable table, int* indice_pairs_fw
  * @param mask_bwd 
  * @param num_indices_in 
  * @param kv 
+ * @param mask_int_count 
  */
-__global__ void calc_conv_indices_stage2_mask_output(int* indice_pairs_bwd, uint32_t* mask_bwd, int num_indices_in, int kv);
+__global__ void calc_conv_indices_stage2_mask_output(int* indice_pairs_bwd, uint32_t* mask_bwd, int num_indices_in, int kv, int mask_int_count);
 template <typename TTable, bool CheckValueValid>
-__global__ void calc_conv_indices_stage2_inference_mask(TTable table, int* indice_pairs_fwd, int* indice_pairs_bwd, const typename TTable::key_type* indice_pairs_uniq_before_sort, uint32_t* mask_fwd, int num_indices_in, int num_indices_out)   {
+__global__ void calc_conv_indices_stage2_inference_mask(TTable table, int* indice_pairs_fwd, int* indice_pairs_bwd, const typename TTable::key_type* indice_pairs_uniq_before_sort, uint32_t* mask_fwd, int num_indices_in, int num_indices_out, int mask_int_count)   {
   
   int filter_offset = blockIdx.y;
-  uint32_t filter_mask_fwd = (1u << (filter_offset));
+  int filter_pointer_offset = filter_offset / 32;
+  uint32_t filter_mask_fwd = (1u << (filter_offset % 32));
   auto indice_pairs_fwd_filter = indice_pairs_fwd + filter_offset * num_indices_out;
   // auto indice_pairs_bwd_filter = indice_pairs_bwd + filter_offset * num_indices_in;
   auto indice_pairs_uniq_before_sort_filter = indice_pairs_uniq_before_sort + filter_offset * num_indices_in;
@@ -236,7 +239,7 @@ __global__ void calc_conv_indices_stage2_inference_mask(TTable table, int* indic
               auto output_index = table.value_ptr()[table_offset];
               bool valid = CheckValueValid ? output_index >= 0 : true;
               if (valid){
-                  atomicOr(mask_fwd + output_index, filter_mask_fwd);
+                  atomicOr(mask_fwd + output_index * mask_int_count + filter_pointer_offset, filter_mask_fwd);
                   indice_pairs_fwd_filter[output_index] = input_index;
               }
           }
@@ -290,11 +293,13 @@ __global__ void calc_subm_conv_indices(TConvLocIter loc_iter, TTable table, cons
   }
 }
 template <typename TTable, typename TConvLocIter>
-__global__ void calc_subm_conv_indices_mask(TConvLocIter loc_iter, TTable table, const int* indices_in, int32_t* indice_pairs, uint32_t* mask, int num_indices, int indices_pair_size, int RS, bool is_train)   {
+__global__ void calc_subm_conv_indices_mask(TConvLocIter loc_iter, TTable table, const int* indices_in, int32_t* indice_pairs, uint32_t* mask, int num_indices, int indices_pair_size, int RS, bool is_train, int mask_int_count = 1)   {
   
   int filter_offset = blockIdx.y;
-  uint32_t filter_mask_out = (1u << (filter_offset));
-  uint32_t filter_mask_in = (1u << (RS - 1 - filter_offset));
+  uint32_t filter_mask_out = (1u << (filter_offset % 32));
+  uint32_t filter_mask_out_offset = filter_offset / 32;
+  uint32_t filter_mask_in = (1u << ((RS - 1 - filter_offset) % 32));
+  uint32_t filter_mask_in_offset = (RS - 1 - filter_offset) / 32;
   // uint32_t filter_mask_center = (1u << (RS / 2));
   loc_iter.set_filter_offset(filter_offset);
   int indices_pair_size_mul_RS = indices_pair_size * RS;
@@ -319,8 +324,8 @@ __global__ void calc_subm_conv_indices_mask(TConvLocIter loc_iter, TTable table,
               auto table_offset = table.lookup_offset(offset); // performance bound
               if (table_offset != -1){
                   auto input_index = table.value_ptr()[table_offset]; // we find a input indice idx.
-                  atomicOr(mask + output_index, filter_mask_out);
-                  atomicOr(mask + input_index, filter_mask_in);
+                  atomicOr(mask + output_index * mask_int_count + filter_mask_out_offset, filter_mask_out);
+                  atomicOr(mask + input_index * mask_int_count + filter_mask_in_offset, filter_mask_in);
                   // for this output, we set correct input idx.
                   indice_pairs[filter_offset_mul_indices_pair_size + output_index] = input_index;
                   if (is_train){
@@ -377,6 +382,17 @@ __global__ void calc_subm_conv_indices_split_mask(TConvLocIter loc_iter, TTable 
               }
           }
       }
+  }
+}
+template <typename T>
+__global__ void init_subm_multiple_mask_int_kernel(T* ptr, int set_bit, int length, int mask_int_count)   {
+  
+  int initial_offset = blockIdx.x * blockDim.x + threadIdx.x;
+  int bit_offset = set_bit / 32;
+  int bit_residue = set_bit % 32;
+  for(int offset : tv::KernelLoopX<int>(length)){
+      for (int i=0; i < mask_int_count; ++i)
+          ptr[offset * mask_int_count + i] = (i == bit_offset) * (1 << bit_residue);
   }
 }
 struct SparseConvIndicesKernel {

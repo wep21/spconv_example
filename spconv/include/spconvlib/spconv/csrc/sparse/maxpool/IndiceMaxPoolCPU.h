@@ -11,6 +11,12 @@ using TensorView = spconvlib::cumm::common::TensorView;
 using GemmDTypes = spconvlib::cumm::common::GemmDTypes;
 struct IndiceMaxPoolCPU {
   /**
+   * @param out_indices 
+   * @param coords 
+   * @param counts 
+   */
+  static void global_pool_rearrange(tv::Tensor out_indices, tv::Tensor coords, tv::Tensor counts);
+  /**
    * @param out 
    * @param in 
    * @param out_inds 

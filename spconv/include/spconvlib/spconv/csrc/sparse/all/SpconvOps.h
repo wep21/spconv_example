@@ -299,6 +299,13 @@ struct SpconvOps {
    */
   static void indice_maxpool_backward(tv::Tensor din, tv::Tensor features, tv::Tensor out_features, tv::Tensor out_bp, tv::Tensor indice_pairs, tv::Tensor indice_pair_num, std::uintptr_t stream = 0);
   /**
+   * @param out_indices 
+   * @param coords 
+   * @param counts 
+   * @param stream 
+   */
+  static void global_pool_rearrange(tv::Tensor out_indices, tv::Tensor coords, tv::Tensor counts, std::uintptr_t stream = 0);
+  /**
    * @param out 
    * @param inp 
    * @param inds 
@@ -363,15 +370,19 @@ struct SpconvOps {
    * @param alloc_func 
    * @param indices 
    * @param stream 
+   * @param mask_count 
+   * @param do_sort 
    */
-  static tv::Tensor sort_1d_by_key_allocator(tv::Tensor data, std::function<std::uintptr_t(std::size_t)> alloc_func, tv::Tensor indices = tv::Tensor(), std::uintptr_t stream = 0);
+  static tv::Tensor sort_1d_by_key_allocator(tv::Tensor data, std::function<std::uintptr_t(std::size_t)> alloc_func, tv::Tensor indices = tv::Tensor(), std::uintptr_t stream = 0, int mask_count = 1, bool do_sort = true);
   /**
    * @param data 
    * @param allocator 
    * @param indices 
    * @param stream 
+   * @param mask_count 
+   * @param do_sort 
    */
-  static tv::Tensor sort_1d_by_key_allocator_v2(tv::Tensor data, ThrustAllocator& allocator, tv::Tensor indices = tv::Tensor(), std::uintptr_t stream = 0);
+  static tv::Tensor sort_1d_by_key_allocator_v2(tv::Tensor data, ThrustAllocator& allocator, tv::Tensor indices = tv::Tensor(), std::uintptr_t stream = 0, int mask_count = 1, bool do_sort = true);
   /**
    * @param data 
    * @param mask 
@@ -527,9 +538,10 @@ struct SpconvOps {
    * @param num_out_act_bound 
    * @param timer 
    * @param direct_table 
+   * @param do_sort 
    * @param preallocated 
    */
-  static std::tuple<tv::Tensor, int> get_indice_pairs_implicit_gemm(ExternalAllocator& allocator, tv::Tensor indices, int batch_size, std::vector<int> input_dims, int algo, std::vector<int> ksize, std::vector<int> stride, std::vector<int> padding, std::vector<int> dilation, std::vector<int> out_padding, bool subm, bool transposed, bool is_train, std::uintptr_t stream_int = 0, int num_out_act_bound = -1, tv::CUDAKernelTimer timer = tv::CUDAKernelTimer(false), bool direct_table = false, std::unordered_map<std::string, tv::Tensor> preallocated = std::unordered_map<std::string, tv::Tensor>{});
+  static std::tuple<tv::Tensor, int> get_indice_pairs_implicit_gemm(ExternalAllocator& allocator, tv::Tensor indices, int batch_size, std::vector<int> input_dims, int algo, std::vector<int> ksize, std::vector<int> stride, std::vector<int> padding, std::vector<int> dilation, std::vector<int> out_padding, bool subm, bool transposed, bool is_train, std::uintptr_t stream_int = 0, int num_out_act_bound = -1, tv::CUDAKernelTimer timer = tv::CUDAKernelTimer(false), bool direct_table = false, bool do_sort = true, std::unordered_map<std::string, tv::Tensor> preallocated = std::unordered_map<std::string, tv::Tensor>{});
   /**
    * @param allocator 
    * @param indices 

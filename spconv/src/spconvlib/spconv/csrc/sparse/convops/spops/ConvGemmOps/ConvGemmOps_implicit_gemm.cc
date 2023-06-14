@@ -12,7 +12,7 @@ using ExternalSpconvMatmul = spconvlib::spconv::csrc::sparse::convops::ExternalS
 using InferenceOps = spconvlib::spconv::csrc::sparse::inference::InferenceOps;
 using GemmTuner = spconvlib::spconv::csrc::sparse::convops::gemmops::GemmTunerSimple;
 using ConvTuner = spconvlib::spconv::csrc::sparse::convops::convops::ConvTunerSimple;
-std::tuple<int, ConvTuneResult> ConvGemmOps::implicit_gemm(ExternalAllocator& allocator, ConvTuner& conv_tuner, tv::Tensor features, tv::Tensor filters, tv::Tensor pair_fwd, std::vector<tv::Tensor> pair_mask_fwd_splits, std::vector<tv::Tensor> mask_argsort_fwd_splits, int num_activate_out, tv::Tensor masks, std::tuple<int, int> arch, bool is_train, bool is_subm, std::uintptr_t stream_int, tv::CUDAKernelTimer timer, bool auto_fp32_accum, bool fp32_accum, tv::Tensor bias, float act_alpha, float act_beta, tv::gemm::Activation act_type, bool use_tf32)   {
+std::tuple<int, ConvTuneResult> ConvGemmOps::implicit_gemm(ExternalAllocator& allocator, ConvTuner& conv_tuner, tv::Tensor features, tv::Tensor filters, tv::Tensor pair_fwd, std::vector<tv::Tensor> pair_mask_fwd_splits, std::vector<tv::Tensor> mask_argsort_fwd_splits, int num_activate_out, tv::Tensor masks, std::tuple<int, int> arch, bool is_train, bool is_subm, std::uintptr_t stream_int, tv::CUDAKernelTimer timer, bool auto_fp32_accum, bool fp32_accum, tv::Tensor bias, float act_alpha, float act_beta, tv::gemm::Activation act_type, bool use_tf32, float output_scale, tv::Tensor scale, tv::Tensor output_add, float output_add_scale, int output_dtype)   {
   
   if (!bias.empty() || act_type != tv::gemm::Activation::kNone){
       TV_ASSERT_RT_ERR(pair_mask_fwd_splits.size() == 1, "SplitGemm don't support fused bias/act for now.");
@@ -24,13 +24,18 @@ std::tuple<int, ConvTuneResult> ConvGemmOps::implicit_gemm(ExternalAllocator& al
   int num_split = pair_mask_fwd_splits.size();
   TV_ASSERT_RT_ERR(num_mask == num_split, "error");
   filters = filters.view(out_channel, -1, in_channel);
+  int kv = filters.dim(1);
+  int mask_int_count = tv::div_up(kv, 32);
   tv::Tensor out_features;
+  if (output_dtype < 0){
+      output_dtype = int(features.dtype());
+  }
   if (is_subm){
       out_features = allocator.empty("OutFeatures", 
-          {num_activate_out, out_channel}, features.dtype(), features.device(), stream_int);
+          {num_activate_out, out_channel}, tv::DType(output_dtype), features.device(), stream_int, false /*is_temp*/, output_scale);
   }else{
       out_features = allocator.zeros("OutFeatures", 
-          {num_activate_out, out_channel}, features.dtype(), features.device(), stream_int);
+          {num_activate_out, out_channel}, tv::DType(output_dtype), features.device(), stream_int, false /*is_temp*/, output_scale);
   }
   // auto start_ev = tv::CUDAEvent();
   // start_ev.record(stream_int);
@@ -66,15 +71,21 @@ std::tuple<int, ConvTuneResult> ConvGemmOps::implicit_gemm(ExternalAllocator& al
           auto_fp32_accum,
           fp32_accum,
           5, // num_run
-          use_tf32);
+          use_tf32,
+          bias,
+          scale);
       tune_res = std::get<0>(tune_res_time);
+  }
+  float alpha = 1.0;
+  if (tune_res.algo_desp.is_int8_inference){
+      alpha = output_scale;
   }
   int mask_width = tune_res.algo_desp.tile_shape[0];
   tv::Tensor mask_output_fwd;
   std::vector<tv::Tensor> mask_output_fwd_splits;
   if (is_train){
       mask_output_fwd = allocator.empty("MaskOutputFwd", 
-          {num_split, tv::div_up(num_activate_out, mask_width)}, 
+          {num_split, tv::div_up(num_activate_out, mask_width), mask_int_count}, 
           tv::uint32, features.device(), stream_int);
       for (int i = 0; i < num_split; ++i){
           mask_output_fwd_splits.push_back(mask_output_fwd[i]);
@@ -86,8 +97,13 @@ std::tuple<int, ConvTuneResult> ConvGemmOps::implicit_gemm(ExternalAllocator& al
   }
   for (int j = 0; j < num_split; ++j){
       float beta = j == 0 ? 0 : 1;
-      if (!bias.empty()){
+      if (!bias.empty() && !tune_res.algo_desp.is_int8_inference){
+          // use source as bias
           beta = 1;
+      }
+      if (!output_add.empty() && tune_res.algo_desp.is_int8_inference){
+          // use source as bias
+          beta = output_add_scale / output_scale;
       }
       if (j > 0){
           bias = tv::Tensor();
@@ -105,7 +121,7 @@ std::tuple<int, ConvTuneResult> ConvGemmOps::implicit_gemm(ExternalAllocator& al
           false, // reverse_mask
           mask_ptr[j],
           -1, // mask_width
-          1.0, beta,
+          alpha, beta,
           stream_int,
           tv::Tensor(), // workspace
           false, // verbose
@@ -114,7 +130,9 @@ std::tuple<int, ConvTuneResult> ConvGemmOps::implicit_gemm(ExternalAllocator& al
           bias,
           act_alpha,
           act_beta,
-          act_type);
+          act_type,
+          scale,
+          output_add);
   }
   // auto end_ev = tv::CUDAEvent();
   // end_ev.record(stream_int);

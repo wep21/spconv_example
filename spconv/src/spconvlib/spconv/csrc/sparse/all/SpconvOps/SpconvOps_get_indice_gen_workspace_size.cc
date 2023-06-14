@@ -24,7 +24,7 @@ std::size_t SpconvOps::get_indice_gen_workspace_size(size_t kv, size_t num_act_i
   
   int hash_size = 2 * num_act_out_bound;
   if (direct_table){
-      hash_size = int(1.1 * max_act_out_in_theory);
+      hash_size = tv::align_up(int(1.1 * max_act_out_in_theory), 2);
   }
   size_t res = 0;
   if (subm){

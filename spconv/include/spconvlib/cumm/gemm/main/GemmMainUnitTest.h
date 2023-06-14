@@ -13,10 +13,6 @@ struct GemmMainUnitTest {
   /**
    * @param params 
    */
-  static void matmul_split_SimtDP4A_s8s8s8_1(tv::gemm::GemmParams params);
-  /**
-   * @param params 
-   */
   static void matmul_split_Simt_f32f32f32_1(tv::gemm::GemmParams params);
   /**
    * @param params 
@@ -30,14 +26,6 @@ struct GemmMainUnitTest {
    * @param params 
    */
   static void matmul_split_Turing_f16f16f16_1(tv::gemm::GemmParams params);
-  /**
-   * @param params 
-   */
-  static void matmul_split_Turing_s8s8s8_1(tv::gemm::GemmParams params);
-  /**
-   * @param params 
-   */
-  static void matmul_split_Ampere_s8s8s8_1(tv::gemm::GemmParams params);
   
   static std::vector<tv::gemm::GemmAlgoDesp> get_all_algo_desp();
   /**

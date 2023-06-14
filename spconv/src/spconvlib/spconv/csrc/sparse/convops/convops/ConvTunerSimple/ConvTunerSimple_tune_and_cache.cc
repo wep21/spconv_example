@@ -6,25 +6,28 @@ namespace sparse {
 namespace convops {
 namespace convops {
 using static_key_t = std::tuple<int, int, int, int, int, int, int, int, int, int>;
-using algo_cache_key_t = std::tuple<int, int, int, int, int, int, int, int>;
+using algo_cache_key_t = std::tuple<int, int, int, int, int, int, int, int, bool>;
 using ExternalAllocator = spconvlib::spconv::csrc::sparse::alloc::ExternalAllocator;
 using ConvTuneResult = spconvlib::spconv::csrc::sparse::convops::ConvTuneResult;
 using TensorView = spconvlib::cumm::common::TensorView;
 using GemmBasicHost = spconvlib::cumm::common::GemmBasicHost;
 using CompileInfo = spconvlib::cumm::common::CompileInfo;
 using ConvMain = spconvlib::cumm::conv::main::ConvMainUnitTest;
-std::tuple<ConvTuneResult, float> ConvTunerSimple::tune_and_cache(int op_type, tv::Tensor inp, tv::Tensor weight, tv::Tensor output, int layout_i, int layout_w, int layout_o, int interleave_i, int interleave_w, int interleave_o, std::tuple<int, int> arch, tv::Tensor mask, tv::Tensor mask_argsort, tv::Tensor indices, bool reverse_mask, uint32_t mask_filter, int mask_width, tv::Tensor mask_output, float alpha, float beta, std::uintptr_t stream_int, bool auto_fp32_accum, bool fp32_accum, int num_run, bool use_tf32)   {
+std::tuple<ConvTuneResult, float> ConvTunerSimple::tune_and_cache(int op_type, tv::Tensor inp, tv::Tensor weight, tv::Tensor output, int layout_i, int layout_w, int layout_o, int interleave_i, int interleave_w, int interleave_o, std::tuple<int, int> arch, tv::Tensor mask, tv::Tensor mask_argsort, tv::Tensor indices, bool reverse_mask, uint32_t mask_filter, int mask_width, tv::Tensor mask_output, float alpha, float beta, std::uintptr_t stream_int, bool auto_fp32_accum, bool fp32_accum, int num_run, bool use_tf32, tv::Tensor bias, tv::Tensor scale)   {
   
   TV_ASSERT_RT_ERR(num_run > 1, "error");
   auto avail = get_all_available(inp, weight, output, layout_i, layout_w,
                                  layout_o, interleave_i, interleave_w, interleave_o,
                                  arch, op_type, mask_width,
-                                 auto_fp32_accum, fp32_accum, use_tf32);
+                                 auto_fp32_accum, fp32_accum, use_tf32,
+                                 bias, scale);
   inp = inp.clone();
   weight = weight.clone();
+  bool need_dynamic_mask = weight.dim(1) > 32;
   output = output.clone();
   int channel_k = output.dim(1);
   int channel_c = inp.dim(1);
+  weight = weight.view(channel_k, -1, channel_c);
   std::vector<ConvTuneResult> all_profile_res;
   std::unordered_set<int> splitk_tests;
   std::vector<float> times;
@@ -47,6 +50,10 @@ std::tuple<ConvTuneResult, float> ConvTunerSimple::tune_and_cache(int op_type, t
       params.indices = indices;
       params.mask = mask;
       params.mask_output = mask_output;
+      if (desp.is_int8_inference){
+          params.bias = bias;
+          params.scale = scale;
+      }
       // if (op_type_cpp == tv::gemm::ConvOpType::kBackwardWeight){
       //     TV_ASSERT_RT_ERR(!mask_output.empty(), "error");
       // }
@@ -103,7 +110,7 @@ std::tuple<ConvTuneResult, float> ConvTunerSimple::tune_and_cache(int op_type, t
   }
   algo_cache_key_t key;
   key = std::make_tuple(int(inp.dtype()), int(weight.dtype()), 
-      int(output.dtype()), channel_k, channel_c, std::get<0>(arch), std::get<1>(arch), mask_width);
+      int(output.dtype()), channel_k, channel_c, std::get<0>(arch), std::get<1>(arch), mask_width, need_dynamic_mask);
   {
       std::lock_guard<std::mutex> guard(mutex_);
       if (op_type_cpp == tv::gemm::ConvOpType::kForward){

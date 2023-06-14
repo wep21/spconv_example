@@ -17,8 +17,9 @@ struct ExternalAllocator {
    * @param device 
    * @param stream 
    * @param is_temp_memory 
+   * @param scale 
    */
-  virtual tv::Tensor zeros(std::string name, std::vector<int64_t> shape, int dtype, int device, std::uintptr_t stream = 0, bool is_temp_memory = false) = 0;
+  virtual tv::Tensor zeros(std::string name, std::vector<int64_t> shape, int dtype, int device, std::uintptr_t stream = 0, bool is_temp_memory = false, float scale = 1.0) = 0;
   /**
    * @param name 
    * @param shape 
@@ -26,8 +27,9 @@ struct ExternalAllocator {
    * @param device 
    * @param stream 
    * @param is_temp_memory 
+   * @param scale 
    */
-  virtual tv::Tensor empty(std::string name, std::vector<int64_t> shape, int dtype, int device, std::uintptr_t stream = 0, bool is_temp_memory = false) = 0;
+  virtual tv::Tensor empty(std::string name, std::vector<int64_t> shape, int dtype, int device, std::uintptr_t stream = 0, bool is_temp_memory = false, float scale = 1.0) = 0;
   /**
    * @param name 
    * @param shape 

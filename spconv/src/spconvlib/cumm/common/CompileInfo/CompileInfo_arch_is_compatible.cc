@@ -4,7 +4,7 @@ namespace cumm {
 namespace common {
 bool CompileInfo::arch_is_compatible(std::tuple<int, int> arch)   {
   
-  if (arch > std::make_tuple(7, 5)){
+  if (arch > std::make_tuple(8, 6)){
       return true;
   }
   return arch_is_compiled(arch);

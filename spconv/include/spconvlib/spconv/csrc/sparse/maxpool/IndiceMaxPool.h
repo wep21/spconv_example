@@ -168,8 +168,23 @@ __global__ void backward_avgpool_implicit_gemm_kernel(const T* dout_features, T*
       }
   }
 }
+/**
+ * @param out_indices 
+ * @param coords 
+ * @param counts 
+ * @param num_indices 
+ * @param indices_stride 
+ */
+__global__ void global_pool_rearrange_kernel(int* out_indices, const int* coords, int* counts, int num_indices, int indices_stride);
 struct IndiceMaxPool {
   static constexpr int kMaxGridYZDim = 65535;
+  /**
+   * @param out_indices 
+   * @param coords 
+   * @param counts 
+   * @param stream 
+   */
+  static void global_pool_rearrange(tv::Tensor out_indices, tv::Tensor coords, tv::Tensor counts, std::uintptr_t stream = 0);
   /**
    * @param out 
    * @param in 

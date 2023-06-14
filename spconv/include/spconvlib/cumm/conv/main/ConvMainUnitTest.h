@@ -29,6 +29,18 @@ struct ConvMainUnitTest {
   /**
    * @param params 
    */
+  static void matmul_split_Turing_s8s8s8_0(tv::gemm::ConvParams params);
+  /**
+   * @param params 
+   */
+  static void matmul_split_Turing_s8s8f32_0(tv::gemm::ConvParams params);
+  /**
+   * @param params 
+   */
+  static void matmul_split_Turing_s8s8f16_0(tv::gemm::ConvParams params);
+  /**
+   * @param params 
+   */
   static void matmul_split_Turing_f16f16f16_0(tv::gemm::ConvParams params);
   /**
    * @param params 
@@ -38,6 +50,18 @@ struct ConvMainUnitTest {
    * @param params 
    */
   static void matmul_split_Ampere_f16f16f16_0(tv::gemm::ConvParams params);
+  /**
+   * @param params 
+   */
+  static void matmul_split_Ampere_s8s8s8_0(tv::gemm::ConvParams params);
+  /**
+   * @param params 
+   */
+  static void matmul_split_Ampere_s8s8f32_0(tv::gemm::ConvParams params);
+  /**
+   * @param params 
+   */
+  static void matmul_split_Ampere_s8s8f16_0(tv::gemm::ConvParams params);
   /**
    * @param op_type 
    * @param N 

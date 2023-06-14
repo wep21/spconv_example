@@ -53,26 +53,27 @@ struct ConvOutLocIter {
     auto npq_no_stride = nhw_to_npq<true>(nhw_offset);
     npq_offset[0] = npq_no_stride[0];
     npq_offset[1] = npq_no_stride[1] / problem_.stride[0];
-    return npq_no_stride[0] < problem_.N && 
+    return (npq_no_stride[0] < problem_.N) && 
+        (npq_no_stride[0] >= 0) && 
         npq_offset[1] >= 0 && npq_offset[1] < problem_.output_dims[0] &&
         !(npq_no_stride[1] % problem_.stride[0]);
   }
   TV_HOST_DEVICE_INLINE bool query_npq_no_stride(const int* nhw_offset, tv::array<int, 2>& npq_offset)  const {
     
     npq_offset = nhw_to_npq<true>(nhw_offset);
-    return npq_offset[0] < problem_.N && 
+    return (npq_offset[0] < problem_.N) && (npq_offset[0] >= 0) && 
         npq_offset[1] >= 0 && npq_offset[1] < problem_.output_dims[0];
   }
   TV_HOST_DEVICE_INLINE bool query_nhw(const int* npq_offset, tv::array<int, 2>& nhw_offset)  const {
     
     nhw_offset = npq_to_nhw(npq_offset);
-    return nhw_offset[0] < problem_.N && 
+    return (nhw_offset[0] < problem_.N) && (nhw_offset[0] >= 0) && 
         nhw_offset[1] >= 0 && nhw_offset[1] < problem_.input_dims[0];
   }
   TV_HOST_DEVICE_INLINE bool query_nhw_out(const int* npq_offset, tv::array<int, 2>& nhw_offset)  const {
     
     nhw_offset = npq_to_nhw(npq_offset);
-    return nhw_offset[0] < problem_.N && 
+    return (nhw_offset[0] < problem_.N) && (nhw_offset[0] >= 0) && 
         nhw_offset[1] >= 0 && nhw_offset[1] < problem_.output_dims[0];
   }
 };

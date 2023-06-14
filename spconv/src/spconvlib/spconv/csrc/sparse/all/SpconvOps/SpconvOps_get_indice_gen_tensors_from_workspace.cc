@@ -28,7 +28,7 @@ std::unordered_map<std::string, tv::Tensor> SpconvOps::get_indice_gen_tensors_fr
       max_act_out_in_theory, subm, use_int64_hash_k, direct_table);
   int hash_size = 2 * num_act_out_bound;
   if (direct_table){
-      hash_size = int(1.1 * max_act_out_in_theory);
+      hash_size = tv::align_up(int(1.1 * max_act_out_in_theory), 2);
   }
   if (use_int64_hash_k){
       auto ten = tv::from_blob(workspace, {int64_t(hash_size)}, tv::int64, 0);

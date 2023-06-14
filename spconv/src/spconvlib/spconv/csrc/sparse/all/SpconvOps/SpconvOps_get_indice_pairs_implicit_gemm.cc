@@ -22,13 +22,17 @@ using Point2Voxel4DCPU = spconvlib::spconv::csrc::sparse::all::ops_cpu4d::Point2
 using SpconvIndicesCPU4D = spconvlib::spconv::csrc::sparse::all::ops_cpu4d::SparseConvIndicesCPU;
 using Point2Voxel4D = spconvlib::spconv::csrc::sparse::all::ops4d::Point2Voxel;
 using HashCoreHost = spconvlib::spconv::csrc::sparse::all::HashCoreHost;
-std::tuple<tv::Tensor, int> SpconvOps::get_indice_pairs_implicit_gemm(ExternalAllocator& allocator, tv::Tensor indices, int batch_size, std::vector<int> input_dims, int algo, std::vector<int> ksize, std::vector<int> stride, std::vector<int> padding, std::vector<int> dilation, std::vector<int> out_padding, bool subm, bool transposed, bool is_train, std::uintptr_t stream_int, int num_out_act_bound, tv::CUDAKernelTimer timer, bool direct_table, std::unordered_map<std::string, tv::Tensor> preallocated)   {
+std::tuple<tv::Tensor, int> SpconvOps::get_indice_pairs_implicit_gemm(ExternalAllocator& allocator, tv::Tensor indices, int batch_size, std::vector<int> input_dims, int algo, std::vector<int> ksize, std::vector<int> stride, std::vector<int> padding, std::vector<int> dilation, std::vector<int> out_padding, bool subm, bool transposed, bool is_train, std::uintptr_t stream_int, int num_out_act_bound, tv::CUDAKernelTimer timer, bool direct_table, bool do_sort, std::unordered_map<std::string, tv::Tensor> preallocated)   {
   
   auto tvctx = tv::Context();
   tvctx.set_cuda_stream(reinterpret_cast<cudaStream_t>(stream_int));
   auto conv_algo = static_cast<tv::gemm::SparseConvAlgo>(algo);
   int kv = std::accumulate(ksize.begin(), ksize.end(), 1, std::multiplies<int>());
-  TV_ASSERT_RT_ERR(kv <= 32, "currently only support ksize < 32");
+  int mask_int_count = tv::div_up(kv, 32);
+  // if (mask_int_count > 1 && mask_int_count < 4)
+  //     mask_int_count = 4;
+  // TV_ASSERT_RT_ERR(mask_int_count == 1 || mask_int_count == 4, "Not Implement too large kernel");
+  // TV_ASSERT_RT_ERR(kv <= 32, "currently only support ksize < 32");
   std::vector<int> out_shape;
   if (!subm){
       if (transposed){
@@ -91,6 +95,7 @@ std::tuple<tv::Tensor, int> SpconvOps::get_indice_pairs_implicit_gemm(ExternalAl
   tv::Tensor mask_tensor = tv::zeros({mask_split_count}, tv::uint32, -1);
   auto mask_tensor_ptr = mask_tensor.data_ptr<uint32_t>();
   if (is_mask_split){
+      TV_ASSERT_RT_ERR(mask_int_count == 1, "not support for kv > 32");
       auto kv_div_2 = kv / 2;
       auto remain = kv - kv_div_2;
       uint64_t mask_np_1 = 1;
@@ -135,14 +140,14 @@ std::tuple<tv::Tensor, int> SpconvOps::get_indice_pairs_implicit_gemm(ExternalAl
         pair_mask = preallocated.at("PairMask");
     }else{
         pair_mask = allocator.empty("PairMask", 
-            {mask_split_count, num_act_in}, tv::uint32, 0, stream_int);
+            {mask_split_count, num_act_in, mask_int_count}, tv::uint32, 0, stream_int);
     }
     generate_subm_conv_inds(indices, hash_k, hash_v, pair, out_inds, indice_num_per_loc,
         batch_size, input_dims, ksize, dilation, pair_mask, is_train, stream_int);
     auto mask_argsort = allocator.empty("MaskArgSort", 
         {mask_split_count, num_act_in}, tv::int32, 0, stream_int);
     for (int j = 0; j < mask_split_count; ++j){
-        sort_1d_by_key_allocator_v2(pair_mask[j], thrustalloc, mask_argsort[j], stream_int);
+        sort_1d_by_key_allocator_v2(pair_mask[j], thrustalloc, mask_argsort[j], stream_int, mask_int_count, do_sort);
     }
   }
   else{
@@ -246,11 +251,11 @@ std::tuple<tv::Tensor, int> SpconvOps::get_indice_pairs_implicit_gemm(ExternalAl
                     pair_fwd = allocator.full_int("PairFwd", 
                         {kv, num_act_out}, -1, indices.dtype(), indices.device(), stream_int);
                     pair_mask_fwd = allocator.zeros("PairMask", 
-                        {mask_split_count, num_act_out}, tv::uint32, 0, stream_int);
+                        {mask_split_count, num_act_out, mask_int_count}, tv::uint32, 0, stream_int);
                     pair_mask_bwd = tv::Tensor();
                     if (is_train){
                         pair_mask_bwd = allocator.zeros("PairMaskBwd", 
-                            {mask_split_count, indices.dim(0)}, tv::uint32, 0, stream_int);
+                            {mask_split_count, indices.dim(0), mask_int_count}, tv::uint32, 0, stream_int);
                     }
                 }
                 if (!direct_table){
@@ -302,6 +307,7 @@ std::tuple<tv::Tensor, int> SpconvOps::get_indice_pairs_implicit_gemm(ExternalAl
         tv::CUDAKernelTimerGuard timer_guard("gen_conv_inds_sort", 
             timer, reinterpret_cast<cudaStream_t>(stream_int));
         if (is_mask_split){
+            TV_ASSERT_RT_ERR(do_sort, "not implemented for now");
             for (int j = 0; j < mask_split_count; ++j){
                 auto mask_tensor_sub = mask_tensor.slice_first_axis(j, j + 1);
                 if (!is_train){
@@ -317,12 +323,12 @@ std::tuple<tv::Tensor, int> SpconvOps::get_indice_pairs_implicit_gemm(ExternalAl
         }else{
             if (!is_train){
                 sort_1d_by_key_allocator_v2(pair_mask_fwd[0], thrustalloc, 
-                    mask_argsort_fwd[0], stream_int);
+                    mask_argsort_fwd[0], stream_int, mask_int_count, do_sort);
             }else{
                 sort_1d_by_key_allocator_v2(pair_mask_fwd[0], thrustalloc, 
-                    mask_argsort_fwd[0], stream_int);
+                    mask_argsort_fwd[0], stream_int, mask_int_count, do_sort);
                 sort_1d_by_key_allocator_v2(pair_mask_bwd[0], thrustalloc, 
-                    mask_argsort_bwd[0], stream_int);
+                    mask_argsort_bwd[0], stream_int, mask_int_count, do_sort);
             }
         }
     }

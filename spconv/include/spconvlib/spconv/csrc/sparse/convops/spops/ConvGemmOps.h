@@ -91,8 +91,13 @@ struct ConvGemmOps {
    * @param act_beta 
    * @param act_type 
    * @param use_tf32 
+   * @param output_scale 
+   * @param scale 
+   * @param output_add 
+   * @param output_add_scale 
+   * @param output_dtype 
    */
-  static std::tuple<int, ConvTuneResult> implicit_gemm(ExternalAllocator& allocator, ConvTuner& conv_tuner, tv::Tensor features, tv::Tensor filters, tv::Tensor pair_fwd, std::vector<tv::Tensor> pair_mask_fwd_splits, std::vector<tv::Tensor> mask_argsort_fwd_splits, int num_activate_out, tv::Tensor masks, std::tuple<int, int> arch, bool is_train = false, bool is_subm = false, std::uintptr_t stream_int = 0, tv::CUDAKernelTimer timer = tv::CUDAKernelTimer(false), bool auto_fp32_accum = true, bool fp32_accum = false, tv::Tensor bias = tv::Tensor(), float act_alpha = 0.0, float act_beta = 0.0, tv::gemm::Activation act_type = tv::gemm::Activation::kNone, bool use_tf32 = true);
+  static std::tuple<int, ConvTuneResult> implicit_gemm(ExternalAllocator& allocator, ConvTuner& conv_tuner, tv::Tensor features, tv::Tensor filters, tv::Tensor pair_fwd, std::vector<tv::Tensor> pair_mask_fwd_splits, std::vector<tv::Tensor> mask_argsort_fwd_splits, int num_activate_out, tv::Tensor masks, std::tuple<int, int> arch, bool is_train = false, bool is_subm = false, std::uintptr_t stream_int = 0, tv::CUDAKernelTimer timer = tv::CUDAKernelTimer(false), bool auto_fp32_accum = true, bool fp32_accum = false, tv::Tensor bias = tv::Tensor(), float act_alpha = 0.0, float act_beta = 0.0, tv::gemm::Activation act_type = tv::gemm::Activation::kNone, bool use_tf32 = true, float output_scale = 1.0, tv::Tensor scale = tv::Tensor(), tv::Tensor output_add = tv::Tensor(), float output_add_scale = 1.0, int output_dtype = -1);
   /**
    * @param allocator 
    * @param conv_tuner 

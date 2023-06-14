@@ -17,6 +17,7 @@ int SparseConvIndicesKernel::generate_conv_inds_stage2_mask(tv::Tensor indices, 
   // TODO stream
   // TODO handle num input == 0
   int kv = ksize.op<tv::arrayops::prod>();
+  int mask_int_count = tv::div_up(kv, 32);
   // indice_pairs_bwd: [kv, num_act_in]  or empty
   // indice_pairs_fwd: [kv, num_act_out]
   auto ctx = tv::Context();
@@ -69,11 +70,13 @@ int SparseConvIndicesKernel::generate_conv_inds_stage2_mask(tv::Tensor indices, 
             indice_pairs_fwd.data_ptr<int>(), indice_pairs_bwd.data_ptr<int>(), 
             indice_pairs_uniq_before_sort.data_ptr<K>(),
             mask_fwd.data_ptr<uint32_t>(), mask_bwd.data_ptr<uint32_t>(),
-            num_act_in, indice_pairs_fwd.dim(1));
+            num_act_in, indice_pairs_fwd.dim(1),
+            mask_int_count);
         launcher_num_act_in_no_y(calc_conv_indices_stage2_mask_output, 
             indice_pairs_bwd.data_ptr<int>(), 
             mask_bwd.data_ptr<uint32_t>(),
-            num_act_in, kv);
+            num_act_in, kv,
+            mask_int_count);
         if (mask_fwd.dim(0) == 2){
             mask_fwd[1].copy_(mask_fwd[0], ctx);
         }
@@ -85,7 +88,8 @@ int SparseConvIndicesKernel::generate_conv_inds_stage2_mask(tv::Tensor indices, 
             indice_pairs_fwd.data_ptr<int>(), indice_pairs_bwd.data_ptr<int>(), 
             indice_pairs_uniq_before_sort.data_ptr<K>(),
             mask_fwd.data_ptr<uint32_t>(),
-            num_act_in, indice_pairs_fwd.dim(1));
+            num_act_in, indice_pairs_fwd.dim(1),
+            mask_int_count);
         if (mask_fwd.dim(0) == 2){
             mask_fwd[1].copy_(mask_fwd[0], ctx);
         }

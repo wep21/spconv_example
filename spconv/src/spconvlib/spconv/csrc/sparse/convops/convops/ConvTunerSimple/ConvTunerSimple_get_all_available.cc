@@ -6,14 +6,14 @@ namespace sparse {
 namespace convops {
 namespace convops {
 using static_key_t = std::tuple<int, int, int, int, int, int, int, int, int, int>;
-using algo_cache_key_t = std::tuple<int, int, int, int, int, int, int, int>;
+using algo_cache_key_t = std::tuple<int, int, int, int, int, int, int, int, bool>;
 using ExternalAllocator = spconvlib::spconv::csrc::sparse::alloc::ExternalAllocator;
 using ConvTuneResult = spconvlib::spconv::csrc::sparse::convops::ConvTuneResult;
 using TensorView = spconvlib::cumm::common::TensorView;
 using GemmBasicHost = spconvlib::cumm::common::GemmBasicHost;
 using CompileInfo = spconvlib::cumm::common::CompileInfo;
 using ConvMain = spconvlib::cumm::conv::main::ConvMainUnitTest;
-std::vector<tv::gemm::ConvAlgoDesp> ConvTunerSimple::get_all_available(tv::Tensor inp, tv::Tensor weight, tv::Tensor out, int layout_i, int layout_w, int layout_o, int interleave_i, int interleave_w, int interleave_o, std::tuple<int, int> arch, int op_type, int mask_width, bool auto_fp32_accum, bool fp32_accum, bool use_tf32)   {
+std::vector<tv::gemm::ConvAlgoDesp> ConvTunerSimple::get_all_available(tv::Tensor inp, tv::Tensor weight, tv::Tensor out, int layout_i, int layout_w, int layout_o, int interleave_i, int interleave_w, int interleave_o, std::tuple<int, int> arch, int op_type, int mask_width, bool auto_fp32_accum, bool fp32_accum, bool use_tf32, tv::Tensor bias, tv::Tensor scale)   {
   
   tv::gemm::ConvOpType op_type_cpp = static_cast<tv::gemm::ConvOpType>(op_type);
   bool is_fp16 = (inp.dtype() == tv::float16 && 
@@ -75,7 +75,21 @@ std::vector<tv::gemm::ConvAlgoDesp> ConvTunerSimple::get_all_available(tv::Tenso
           TV_ASSERT_RT_ERR(mask_width > 0, "eroro");
           mask_width_valid = mask_width % desp.tile_shape[2] == 0;
       }
+      bool require_dynamic_mask = kv > 32;
       if (desp.supported_ldx_conv(ldi, ldw, ldo) && mask_width_valid){
+          if (!bias.empty() && !scale.empty()){
+              TV_ASSERT_RT_ERR(bias.dtype() == scale.dtype(), "bias/scale dtype must equal to compute dtype in gemm");
+              if (desp.dcomp != bias.dtype()){
+                  continue;
+              }
+              if (!desp.is_int8_inference){
+                  continue;
+              }
+          }else{
+              if (desp.is_int8_inference){
+                  continue;
+              }
+          }
           auto desp2 = desp;
           if (desp.is_nvrtc){
               if (!CompileInfo::algo_can_be_nvrtc_compiled(desp.min_arch)){
@@ -89,6 +103,15 @@ std::vector<tv::gemm::ConvAlgoDesp> ConvTunerSimple::get_all_available(tv::Tenso
                   }else{
                       continue;
                   }
+              }
+          }
+          if (require_dynamic_mask){
+              if (!desp.dynamic_mask){
+                  continue;
+              }
+          }else{
+              if (desp.dynamic_mask){
+                  continue;
               }
           }
           finally_algos.push_back(desp2);

@@ -22,7 +22,7 @@ using CompileInfo = spconvlib::cumm::common::CompileInfo;
 using ConvMain = spconvlib::cumm::conv::main::ConvMainUnitTest;
 struct ConvTunerSimple {
   using static_key_t = std::tuple<int, int, int, int, int, int, int, int, int, int>;
-  using algo_cache_key_t = std::tuple<int, int, int, int, int, int, int, int>;
+  using algo_cache_key_t = std::tuple<int, int, int, int, int, int, int, int, bool>;
   std::vector<tv::gemm::ConvAlgoDesp> desps_;
   std::unordered_map<static_key_t, std::vector<tv::gemm::ConvAlgoDesp>> static_key_to_desps_;
   std::unordered_set<std::string> prebuilt_names_;
@@ -54,8 +54,10 @@ struct ConvTunerSimple {
    * @param auto_fp32_accum 
    * @param fp32_accum 
    * @param use_tf32 
+   * @param bias 
+   * @param scale 
    */
-  std::vector<tv::gemm::ConvAlgoDesp> get_all_available(tv::Tensor inp, tv::Tensor weight, tv::Tensor out, int layout_i, int layout_w, int layout_o, int interleave_i, int interleave_w, int interleave_o, std::tuple<int, int> arch, int op_type, int mask_width, bool auto_fp32_accum, bool fp32_accum, bool use_tf32 = true);
+  std::vector<tv::gemm::ConvAlgoDesp> get_all_available(tv::Tensor inp, tv::Tensor weight, tv::Tensor out, int layout_i, int layout_w, int layout_o, int interleave_i, int interleave_w, int interleave_o, std::tuple<int, int> arch, int op_type, int mask_width, bool auto_fp32_accum, bool fp32_accum, bool use_tf32 = true, tv::Tensor bias = tv::Tensor(), tv::Tensor scale = tv::Tensor());
   /**
    * @param desp 
    * @param arch 
@@ -88,8 +90,10 @@ struct ConvTunerSimple {
    * @param fp32_accum 
    * @param num_run 
    * @param use_tf32 
+   * @param bias 
+   * @param scale 
    */
-  std::tuple<ConvTuneResult, float> tune_and_cache(int op_type, tv::Tensor inp, tv::Tensor weight, tv::Tensor output, int layout_i, int layout_w, int layout_o, int interleave_i, int interleave_w, int interleave_o, std::tuple<int, int> arch, tv::Tensor mask, tv::Tensor mask_argsort, tv::Tensor indices, bool reverse_mask, uint32_t mask_filter = 0xffffffff, int mask_width = -1, tv::Tensor mask_output = tv::Tensor(), float alpha = 1.0, float beta = 0.0, std::uintptr_t stream_int = 0, bool auto_fp32_accum = true, bool fp32_accum = false, int num_run = 5, bool use_tf32 = true);
+  std::tuple<ConvTuneResult, float> tune_and_cache(int op_type, tv::Tensor inp, tv::Tensor weight, tv::Tensor output, int layout_i, int layout_w, int layout_o, int interleave_i, int interleave_w, int interleave_o, std::tuple<int, int> arch, tv::Tensor mask, tv::Tensor mask_argsort, tv::Tensor indices, bool reverse_mask, uint32_t mask_filter = 0xffffffff, int mask_width = -1, tv::Tensor mask_output = tv::Tensor(), float alpha = 1.0, float beta = 0.0, std::uintptr_t stream_int = 0, bool auto_fp32_accum = true, bool fp32_accum = false, int num_run = 5, bool use_tf32 = true, tv::Tensor bias = tv::Tensor(), tv::Tensor scale = tv::Tensor());
   /**
    * @param op_type 
    * @param i_dtype 
@@ -99,8 +103,9 @@ struct ConvTunerSimple {
    * @param c 
    * @param arch 
    * @param mask_width 
+   * @param need_dynamic_mask 
    */
-  std::tuple<ConvTuneResult, bool> get_tuned_algo(int op_type, int i_dtype, int w_dtype, int o_dtype, int k, int c, std::tuple<int, int> arch, int mask_width = -1);
+  std::tuple<ConvTuneResult, bool> get_tuned_algo(int op_type, int i_dtype, int w_dtype, int o_dtype, int k, int c, std::tuple<int, int> arch, int mask_width = -1, bool need_dynamic_mask = false);
   /**
    * @param profile_res 
    * @param op_type 
@@ -125,8 +130,10 @@ struct ConvTunerSimple {
    * @param act_alpha 
    * @param act_beta 
    * @param act_type 
+   * @param scale 
+   * @param output_add 
    */
-  void run_with_tuned_result(ConvTuneResult profile_res, int op_type, tv::Tensor inp, tv::Tensor weight, tv::Tensor output, tv::Tensor mask, tv::Tensor mask_argsort, tv::Tensor mask_output, tv::Tensor indices, bool reverse_mask, uint32_t mask_filter = 0xffffffff, int mask_width = -1, float alpha = 1.0, float beta = 0.0, std::uintptr_t stream_int = 0, tv::Tensor workspace = tv::Tensor(), bool verbose = false, tv::CUDAKernelTimer timer = tv::CUDAKernelTimer(false), bool force_nvrtc = false, tv::Tensor bias = tv::Tensor(), float act_alpha = 0.0, float act_beta = 0.0, tv::gemm::Activation act_type = tv::gemm::Activation::kNone);
+  void run_with_tuned_result(ConvTuneResult profile_res, int op_type, tv::Tensor inp, tv::Tensor weight, tv::Tensor output, tv::Tensor mask, tv::Tensor mask_argsort, tv::Tensor mask_output, tv::Tensor indices, bool reverse_mask, uint32_t mask_filter = 0xffffffff, int mask_width = -1, float alpha = 1.0, float beta = 0.0, std::uintptr_t stream_int = 0, tv::Tensor workspace = tv::Tensor(), bool verbose = false, tv::CUDAKernelTimer timer = tv::CUDAKernelTimer(false), bool force_nvrtc = false, tv::Tensor bias = tv::Tensor(), float act_alpha = 0.0, float act_beta = 0.0, tv::gemm::Activation act_type = tv::gemm::Activation::kNone, tv::Tensor scale = tv::Tensor(), tv::Tensor output_add = tv::Tensor());
   /**
    * @param desp 
    * @param splitk 
