@@ -11,7 +11,7 @@ struct GlobalLoad {
   __forceinline__ __device__ static void run(Frag & frag, void const* ptr, bool pred)   {
     
     uint32_t* frag_ptr = reinterpret_cast<uint32_t*>(&frag);
-    #if (CUDA_VERSION >= 11040)
+    #if (CUDA_VERSION >= 11040 && (__CUDA_ARCH__ >= 750))
       asm volatile (
           "{\n"
           "  mov.b32 %0,%0;\n"

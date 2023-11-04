@@ -22,7 +22,7 @@ using SpconvIndicesCPU4D = spconvlib::spconv::csrc::sparse::all::ops_cpu4d::Spar
 using Point2Voxel4D = spconvlib::spconv::csrc::sparse::all::ops4d::Point2Voxel;
 std::string SpconvOps::cumm_version()   {
   
-  return "0.4.9";
+  return "0.4.10";
 }
 } // namespace all
 } // namespace sparse
