@@ -18,7 +18,7 @@ set(CMAKE_CUDA_ARCHITECTURES 75)
 include(FetchContent)
 FetchContent_Declare(cumm
   GIT_REPOSITORY https://github.com/FindDefinition/cumm
-  GIT_TAG 7d7b9b278bd7d3fc84e39e8fdb78d8c0395a2ffe # v0.4.9
+  GIT_TAG 92a3dfa7e3ad4f0d185fbe14a38c79adfb63d313 # v0.4.11
 )
 
 FetchContent_MakeAvailable(cumm)
